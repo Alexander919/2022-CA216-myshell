@@ -2,9 +2,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #define SEPARATORS " \t\n"                     /* token separators */
-
+extern char **environ;
 /* compile time constants */
 enum {
   icmd_len = 8,       /* length of interal commands array */
@@ -12,8 +15,16 @@ enum {
   max_args = 64       /* max number of args */
 };
 /* internal commands enum */
-enum icmd             {  cd = 0,   clr,   dir,   environ,   echo,   help,   pause,   quit  };
+enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, quit_e  };
 const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", "quit" };
+
+volatile __sig_atomic_t running = 1;
+
+void handle_signal(int sig)
+{
+  (void) sig;
+  running = 0;
+}
 
 int split(char **dest, char *src)
 {
@@ -39,6 +50,14 @@ void print_tokens(char **tokens, int length)
     printf("%s ", tokens[i]);
   }
   printf("\n");
+}
+
+void print_environ()
+{
+  int i;
+  for(i = 0; environ[i] != NULL; i++) {
+    printf("%s\n", environ[i]);
+  }
 }
 /* print chars irrespective of \0 if len > 0 */
 void print_char_values(char *chars, int len)
@@ -75,37 +94,65 @@ void prompt(int is_file)
 
 void quit_app()
 {
-  /* clean everything */
-  printf("Bye.\n");
-  exit(EXIT_SUCCESS);
+  printf("Bye!\n");
+  running = 0;
 }
 
-void internal_cmd(char *command)
+void external_cmd()
 {
+
+}
+
+void change_directory(char **dir_name)
+{
+  char *cwd = getcwd(NULL, 0);
+  /* check if empty, if it is report the current directory */
+  /* check if dir_name exists, if not print error */
+  /* change PWD env variable */
+  if(*dir_name == NULL) { /* no arguments */
+    printf("%s\n", cwd);
+    return;
+  }
+  const char *path = *dir_name;
+  struct stat st;
+
+  if(stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
+      printf("Directory exists\n");
+  } else {
+      printf("Directory does not exist or is inaccessible\n");
+  }
+}
+
+void run_cmd(char **arguments)
+{
+  char *command = *arguments++;
+  /* get internal command enum code */
   enum icmd eicmd = get_icmd(command);
 
   switch(eicmd) {
-    case cd:
+    case cd_e:
+      change_directory(arguments);
       break;
-    case clr:
+    case clr_e:
       system("clear");
       break;
-    case dir:
+    case dir_e:
       system("ls -la");
       break;
-    case environ:
+    case environ_e:
+      print_environ();
       break;
-    case echo:
+    case echo_e:
       break;
-    case help:
+    case help_e:
       break;
-    case pause:
+    case pause_e:
       break;
-    case quit:
+    case quit_e:
       quit_app();
       break;
     default:
-      return;
+      external_cmd();
   }
 }
 
@@ -132,8 +179,13 @@ int main(int argc, char ** argv)
     is_file = 1;
     input = fp;
   }
+
+  if(signal(SIGINT, handle_signal) == SIG_ERR) {
+    fprintf(stderr, "Cannot install signal handler\n");
+    exit(EXIT_FAILURE);
+  }
   /* read from stdin or a file */
-  while(1) {
+  while(running) {
     prompt(is_file);
 
     clear_buf(buf, buf_len, max_buffer, sizeof(char));
@@ -144,53 +196,22 @@ int main(int argc, char ** argv)
       buf_len = strlen(buf);
       args_len = split(args, buf);
     } else {
-      /* inspect fgets return value */
-      if(feof(input)) { /* EOF */
+      /* fgets returns NULL due to EOF or error */
+      if(feof(input)) {
         quit_app();
+        continue;
       }
 
       if(ferror(input)) { /* Error */
-        perror("Reading error.");
+        perror("myshell");
         break;
       }
     }
 #if 0
     print_tokens(args, args_len);
 #endif
-    internal_cmd(args[0]);
-
+    run_cmd(args);
   }
 
   return 0;
 }
-/* handle Ctrl+C */
-#if 0
- #include <stdio.h>
- #include <signal.h>
-
- volatile sig_atomic_t running = 1;
-
- void handle_signal(int sig)
- {
-   (void) sig;
-   running = 0;
- }
-
- int main(void)
- {
-   if(signal(SIGINT, handle_signal) == SIG_ERR) {
-     fprintf(stderr, "Cannot install signal handler\n");
-     return 1;
-   }
-
-   printf("Press Ctrl+C to stop.\n");
-
-   while(running) {
-     /* Perform work */
-   }
-
-   printf("Program terminated gracefully.\n");
-
-   return 0;
- }
- #endif

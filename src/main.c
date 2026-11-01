@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L /* required for setenv */
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
@@ -6,7 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#define SEPARATORS " \t\n"                     /* token separators */
+#define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
 /* compile time constants */
 enum {
@@ -19,6 +20,15 @@ enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, 
 const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", "quit" };
 
 volatile __sig_atomic_t running = 1;
+
+char *getcwd2()
+{
+  char *cwd = getcwd(NULL, 0);
+  if(cwd == NULL) {
+    perror("getcwd");
+  }
+  return cwd;
+}
 
 void handle_signal(int sig)
 {
@@ -105,22 +115,24 @@ void external_cmd()
 
 void change_directory(char **dir_name)
 {
-  char *cwd = getcwd(NULL, 0);
-  /* check if empty, if it is report the current directory */
-  /* check if dir_name exists, if not print error */
-  /* change PWD env variable */
-  if(*dir_name == NULL) { /* no arguments */
-    printf("%s\n", cwd);
-    return;
-  }
-  const char *path = *dir_name;
   struct stat st;
+  char *cwd = NULL;
+  const char *path = *dir_name;
 
-  if(stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
-      printf("Directory exists\n");
+  if(*dir_name == NULL) { /* no arguments */
+    cwd = getcwd2();
+    fprintf(stdout, "%s\n", cwd);
+  } else if(stat(path, &st) == 0 && S_ISDIR(st.st_mode)) { /* check if path exists */
+      if(chdir(path) == -1) perror("chdir");
+
+      cwd = getcwd2();
+      if(setenv("PWD", cwd, 1) == -1) perror("setenv");
+
+      system("pwd");
   } else {
-      printf("Directory does not exist or is inaccessible\n");
+      printf("Directory does not exist or is inaccessible.\n");
   }
+  free(cwd);
 }
 
 void run_cmd(char **arguments)
@@ -131,7 +143,9 @@ void run_cmd(char **arguments)
 
   switch(eicmd) {
     case cd_e:
+#if 1
       change_directory(arguments);
+#endif
       break;
     case clr_e:
       system("clear");

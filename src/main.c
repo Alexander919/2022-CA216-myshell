@@ -6,6 +6,9 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+
 
 #define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
@@ -13,7 +16,8 @@ extern char **environ;
 enum {
   icmd_len = 8,       /* length of interal commands array */
   max_buffer = 1024,  /* max line buffer */
-  max_args = 64       /* max number of args */
+  max_args = 64,      /* max number of args */
+  max_data = 256
 };
 /* internal commands enum */
 enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, quit_e  };
@@ -97,9 +101,21 @@ int get_icmd(char *command)
 
 void prompt(int is_file)
 {
-  char *prompt = "==> ";
+  char hostname[max_data] = "hostname";
+  char *username = "username";
+  char cwd[max_data] = "-";
+
+  uid_t uid = geteuid();
+  struct passwd *pw = getpwuid(uid);
+  if(pw) username = pw->pw_name;
+
+  gethostname(hostname, max_data);
+  hostname[max_data - 1] = '\0';
+
+  getcwd(cwd, max_data);
+
   if(!is_file)
-    fputs(prompt, stdout);
+    fprintf(stdout, "%s@%s:%s> ", username, hostname, cwd);
 }
 
 void quit_app()
@@ -127,8 +143,6 @@ void change_directory(char **dir_name)
 
       cwd = getcwd2();
       if(setenv("PWD", cwd, 1) == -1) perror("setenv");
-
-      system("pwd");
   } else {
       printf("Directory does not exist or is inaccessible.\n");
   }

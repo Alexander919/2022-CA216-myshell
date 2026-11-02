@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <ctype.h>
 
 
 #define SEPARATORS " \t\n" /* token separators */
@@ -73,6 +74,32 @@ void print_environ()
     printf("%s\n", environ[i]);
   }
 }
+/* remove whitespace */
+char *trim_start(char *str)
+{
+  if(str)
+    while(isspace((unsigned char) *str)) str++;
+
+  return str;
+}
+/* start with $ e.g. $HOME */
+int is_env(char *env)
+{
+  if(env == NULL)
+    return 0;
+
+  env = trim_start(env); /* remove all whitespace at the front */
+
+  if(env[0] == '\0') /* check if empty string */
+    return 0;
+
+  return env[0] == '$';
+}
+
+char *get_env_value(char *env)
+{
+  return getenv(env);
+}
 /* print chars irrespective of \0 if len > 0 */
 void print_char_values(char *chars, int len)
 {
@@ -92,10 +119,13 @@ void print_char_values(char *chars, int len)
 int get_icmd(char *command)
 {
   int i;
+  if(command == NULL) goto end;
+
   for(i = 0; i < icmd_len; i++) {
     if(strcmp(icmd[i], command) == 0)
       return i;
   }
+end:
   return -1;
 }
 
@@ -128,7 +158,7 @@ void external_cmd()
 {
 
 }
-
+/* cd */
 void change_directory(char **dir_name)
 {
   struct stat st;
@@ -148,18 +178,28 @@ void change_directory(char **dir_name)
   }
   free(cwd);
 }
+/* echo */
+void display(char **args)
+{
+  char *arg;
+  while((arg = *args)) {
+    if(is_env(arg))
+      arg = getenv(++arg); /* move past $ */
+    /* if NULL is next (last argument) print \n */
+    fprintf(stdout, "%s%c", arg, *(++args) ? ' ' : '\n');
+  }
+}
 
 void run_cmd(char **arguments)
 {
   char *command = *arguments++;
+  if(command == NULL) return;
   /* get internal command enum code */
   enum icmd eicmd = get_icmd(command);
 
   switch(eicmd) {
     case cd_e:
-#if 1
       change_directory(arguments);
-#endif
       break;
     case clr_e:
       system("clear");
@@ -171,6 +211,7 @@ void run_cmd(char **arguments)
       print_environ();
       break;
     case echo_e:
+      display(arguments);
       break;
     case help_e:
       break;
@@ -231,14 +272,14 @@ int main(int argc, char ** argv)
       }
 
       if(ferror(input)) { /* Error */
-        perror("myshell");
+        perror("fgets");
         break;
       }
     }
+    run_cmd(args);
 #if 0
     print_tokens(args, args_len);
 #endif
-    run_cmd(args);
   }
 
   return 0;

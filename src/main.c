@@ -187,15 +187,34 @@ void display(char **args)
       arg = getenv(++arg); /* move past $ */
     /* if NULL is next (last argument) print \n */
     fprintf(stdout, "%s%c", arg, *(++args) ? ' ' : '\n');
+    printf("\x41\101\n");
   }
 }
+/* TODO:
+ * implement flags:
+ * -e (escape interpretation)
+ * -n (suppress the trailing newline)
+ * implement escape sequences: \n \t \\
+ * support octal escape sequences \012
+ * support hexadecimal escape sequences \x41
+ * support environment variable expansion, such as $HOME, $USER, and $PATH
+ * support ${VARIABLE} syntax for environment variable expansion.
+ *
+ * expand $? to the exit status of the previous command.
+ * expand $$ to the current shell's process ID.
+ * support single quotes, preventing variable expansion inside them.
+ * support double quotes, allowing variable expansion while preserving spaces.
+ * support escaped dollar signs, so \$HOME prints $HOME literally.
+ * handle combinations of options, such as -ne and -en.
+ */
 
 void run_cmd(char **arguments)
 {
   char *command = *arguments++;
+  enum icmd eicmd;
   if(command == NULL) return;
   /* get internal command enum code */
-  enum icmd eicmd = get_icmd(command);
+  eicmd = get_icmd(command);
 
   switch(eicmd) {
     case cd_e:

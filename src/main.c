@@ -82,6 +82,15 @@ char *trim_start(char *str)
 
   return str;
 }
+
+/* is path a directory */
+int is_path(const char *path)
+{
+  struct stat st;
+  if(path == NULL) return 0;
+
+  return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
 /* start with $ e.g. $HOME */
 int is_env(char *env)
 {
@@ -161,20 +170,20 @@ void external_cmd()
 /* cd */
 void change_directory(char **dir_name)
 {
-  struct stat st;
   char *cwd = NULL;
   const char *path = *dir_name;
 
-  if(*dir_name == NULL) { /* no arguments */
+  if(is_path(path)) { /* check if path exists */
+    if(chdir(path) == -1) perror("chdir");
     cwd = getcwd2();
-    fprintf(stdout, "%s\n", cwd);
-  } else if(stat(path, &st) == 0 && S_ISDIR(st.st_mode)) { /* check if path exists */
-      if(chdir(path) == -1) perror("chdir");
-
-      cwd = getcwd2();
-      if(setenv("PWD", cwd, 1) == -1) perror("setenv");
+    if(setenv("PWD", cwd, 1) == -1) perror("setenv");
   } else {
-      printf("Directory does not exist or is inaccessible.\n");
+    if(path == NULL) { /* no arguments */
+      cwd = getcwd2();
+      fprintf(stdout, "%s\n", cwd);
+    } else {
+      fprintf(stdout, "Directory does not exist or is inaccessible.\n");
+    }
   }
   free(cwd);
 }

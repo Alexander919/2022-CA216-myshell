@@ -163,7 +163,18 @@ void quit_app()
   running = 0;
 }
 
-void external_cmd()
+void external_cmd(char *command, char **arguments)
+{
+  //fork
+  // execvp (vector, path)
+}
+/* clear */
+void clear_screen()
+{
+
+}
+/* dir */
+void print_directory()
 {
 
 }
@@ -249,7 +260,7 @@ void run_cmd(char **arguments)
       quit_app();
       break;
     default:
-      external_cmd();
+      external_cmd(command, arguments);
   }
 }
 

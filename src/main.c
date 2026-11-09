@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <ctype.h>
+#include <sys/wait.h>
+#include <errno.h>
 
 
 #define SEPARATORS " \t\n" /* token separators */
@@ -25,6 +27,17 @@ enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, 
 const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", "quit" };
 
 volatile __sig_atomic_t running = 1;
+int background = 0; /* background execution (&) */
+
+void reap_children(void)
+{
+  pid_t pid;
+  int status;
+
+  while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    printf("Background process %ld finished\n", (long)pid);
+  }
+}
 
 char *getcwd2()
 {
@@ -33,6 +46,44 @@ char *getcwd2()
     perror("getcwd");
   }
   return cwd;
+}
+
+int spawn(char *prog, char **args)
+{
+  pid_t pid, result;
+  int status;
+
+  pid = fork();
+  if(pid == -1) {
+    perror("fork");
+    return EXIT_FAILURE;
+  }
+  /* child process */
+  if(pid == 0) {
+    execvp(prog, args);
+
+    perror("execvp");
+    exit(EXIT_FAILURE);
+  }
+  if(background) /* background execution, skip waitpid */
+    goto end;
+  /* parent process */
+  do {
+    result = waitpid(pid, &status, 0);
+  } while(result == -1 && errno == EINTR);
+
+  if(result == -1) {
+    perror("waitpid");
+    return EXIT_FAILURE;
+  }
+
+  if(WIFEXITED(status)) {
+      printf("Child exited with status %d\n", WEXITSTATUS(status));
+  } else if(WIFSIGNALED(status)) {
+    printf("Child terminated by signal %d\n", WTERMSIG(status));
+  }
+end:
+  return EXIT_SUCCESS;
 }
 
 void handle_signal(int sig)
@@ -159,19 +210,18 @@ void prompt(int is_file)
 
 void quit_app()
 {
-  printf("Bye!\n");
+  fprintf(stdout, "Bye!\n");
   running = 0;
 }
 
-void external_cmd(char *command, char **arguments)
+int external_cmd(char *command, char **arguments)
 {
-  //fork
-  // execvp (vector, path)
+  return spawn(command, arguments);
 }
 /* clear */
-void clear_screen()
+int clear_screen()
 {
-
+  return spawn("clear", NULL);
 }
 /* dir */
 void print_directory()
@@ -241,7 +291,7 @@ void run_cmd(char **arguments)
       change_directory(arguments);
       break;
     case clr_e:
-      system("clear");
+      clear_screen();
       break;
     case dir_e:
       system("ls -la");
@@ -294,6 +344,8 @@ int main(int argc, char ** argv)
   }
   /* read from stdin or a file */
   while(running) {
+    reap_children();
+
     prompt(is_file);
 
     clear_buf(buf, buf_len, max_buffer, sizeof(char));

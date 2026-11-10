@@ -79,7 +79,8 @@ int spawn(char *prog, char **args)
 
   if(WIFEXITED(status)) {
       printf("Child exited with status %d\n", WEXITSTATUS(status));
-  } else if(WIFSIGNALED(status)) {
+  }
+  else if(WIFSIGNALED(status)) {
     printf("Child terminated by signal %d\n", WTERMSIG(status));
   }
 end:
@@ -224,15 +225,17 @@ int clear_screen()
   return spawn("clear", NULL);
 }
 /* dir */
-void print_directory()
+int print_directory(char *path)
 {
-
+  char *vector[] = { "ls", "-la", NULL, NULL };
+  /*char *vector[] = { "ls", "-la", path, NULL }; warning compiling with -std=89 -Wpedantic */
+  vector[2] = path;
+  return spawn("ls", vector);
 }
 /* cd */
-void change_directory(char **dir_name)
+void change_directory(char *path)
 {
   char *cwd = NULL;
-  const char *path = *dir_name;
 
   if(is_path(path)) { /* check if path exists */
     if(chdir(path) == -1) perror("chdir");
@@ -255,9 +258,9 @@ void display(char **args)
   while((arg = *args)) {
     if(is_env(arg))
       arg = getenv(++arg); /* move past $ */
-    /* if NULL is next (last argument) print \n */
+    /* if NULL is next (last argument) print new line */
     fprintf(stdout, "%s%c", arg, *(++args) ? ' ' : '\n');
-    printf("\x41\101\n");
+    /* printf("\x41\101\n"); */
   }
 }
 /* TODO:
@@ -280,27 +283,29 @@ void display(char **args)
 
 void run_cmd(char **arguments)
 {
-  char *command = *arguments++;
   enum icmd eicmd;
+  char *command = *arguments;
+  char **cmd_args = arguments + 1;
+
   if(command == NULL) return;
   /* get internal command enum code */
   eicmd = get_icmd(command);
 
   switch(eicmd) {
     case cd_e:
-      change_directory(arguments);
+      change_directory(*cmd_args);
       break;
     case clr_e:
       clear_screen();
       break;
     case dir_e:
-      system("ls -la");
+      print_directory(*cmd_args);
       break;
     case environ_e:
       print_environ();
       break;
     case echo_e:
-      display(arguments);
+      display(cmd_args);
       break;
     case help_e:
       break;

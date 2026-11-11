@@ -11,7 +11,9 @@
 #include <ctype.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <libgen.h>
 
+char *getcwd2();
 
 #define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
@@ -28,6 +30,7 @@ const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", 
 
 volatile __sig_atomic_t running = 1;
 int background = 0; /* background execution (&) */
+char project_root[max_data]; /* project root directory */
 
 void reap_children(void)
 {
@@ -281,6 +284,17 @@ void display(char **args)
  * handle combinations of options, such as -ne and -en.
  */
 
+int print_help()
+{
+  char manual_path[max_data];
+  char *args[] = { "more", NULL, NULL };
+  snprintf(manual_path, sizeof(manual_path), "%s/%s", project_root, "readme.md");
+
+  args[1] = manual_path;
+
+  return spawn("more", args);
+}
+
 void run_cmd(char **arguments)
 {
   enum icmd eicmd;
@@ -308,6 +322,7 @@ void run_cmd(char **arguments)
       display(cmd_args);
       break;
     case help_e:
+      print_help();
       break;
     case pause_e:
       break;
@@ -317,6 +332,23 @@ void run_cmd(char **arguments)
     default:
       external_cmd(command, arguments);
   }
+}
+
+int write_project_root()
+{
+  ssize_t len;
+  char exe_path[max_data];
+
+  len = readlink("/proc/self/exe", exe_path, max_data - 1);
+  if(len == -1) {
+    perror("readlink");
+    return EXIT_FAILURE;
+  }
+
+  exe_path[len] = '\0';
+  strcpy(project_root, dirname(dirname(exe_path)));
+
+  return 0;
 }
 
 int main(int argc, char ** argv)
@@ -329,6 +361,9 @@ int main(int argc, char ** argv)
   int is_file = 0;
 
   FILE *input = stdin;
+
+  write_project_root();
+  printf("%s\n", project_root);
 
   if(argc > 1) { /* reading from a file */
     char *file = argv[1];

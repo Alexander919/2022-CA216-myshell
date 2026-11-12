@@ -12,8 +12,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <libgen.h>
-
-char *getcwd2();
+#include <termios.h>
 
 #define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
@@ -295,6 +294,41 @@ int print_help()
   return spawn("more", args);
 }
 
+void pause_shell()
+{
+  char ch;
+  int term_value;
+  struct termios term;
+  term_value = tcgetattr(1, &term); /* 1 (output) fd */
+  if(term_value == -1) {
+    perror("tcgetattr");
+    return;
+  }
+
+  /* disable the ECHO flag */
+  term.c_lflag &= ~ECHO;
+  term_value = tcsetattr(1, TCSANOW, &term);
+  if(term_value == -1) {
+    perror("tcsetattr");
+    return;
+  }
+
+  fprintf(stdout, "myshell is paused, press Enter to continue...");
+  while((ch = getchar()) != '\n')
+    if(ch == EOF)
+      clearerr(stdin); /* clear EOF indicator returned by getchar if Ctrl-D is pressed */
+
+  fprintf(stdout, "\n");
+
+  /* restore terminal */
+  term.c_lflag |= ECHO;
+  term_value = tcsetattr(1, TCSANOW, &term);
+  if(term_value == -1) {
+    perror("tcsetattr2");
+    return;
+  }
+}
+
 void run_cmd(char **arguments)
 {
   enum icmd eicmd;
@@ -325,6 +359,7 @@ void run_cmd(char **arguments)
       print_help();
       break;
     case pause_e:
+      pause_shell();
       break;
     case quit_e:
       quit_app();
@@ -363,7 +398,6 @@ int main(int argc, char ** argv)
   FILE *input = stdin;
 
   write_project_root();
-  printf("%s\n", project_root);
 
   if(argc > 1) { /* reading from a file */
     char *file = argv[1];

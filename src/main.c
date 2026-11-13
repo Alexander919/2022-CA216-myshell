@@ -21,7 +21,7 @@ enum {
   icmd_len = 8,       /* length of interal commands array */
   max_buffer = 1024,  /* max line buffer */
   max_args = 64,      /* max number of args */
-  max_data = 256
+  max_data = 512
 };
 /* internal commands enum */
 enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, quit_e  };
@@ -297,9 +297,9 @@ char *get_project_root()
 {
   ssize_t len;
   size_t path_len;
-  char 
-      *exe_path, 
-      *project_path = NULL, 
+  char
+      *exe_path,
+      *project_path = NULL,
       *project_path_p;
 
   exe_path = xmalloc(max_data * sizeof(char));
@@ -309,14 +309,14 @@ char *get_project_root()
     perror("readlink");
     goto end;
   }
-  
+
   exe_path[len] = '\0';
   project_path_p = dirname(dirname(exe_path));
   path_len = strlen(project_path_p) + 1;
 
   project_path = xmalloc(path_len * sizeof(char));
   strcpy(project_path, project_path_p);
-  
+
 end:
   free(exe_path);
   return project_path;
@@ -340,15 +340,17 @@ void pause_shell()
   char ch;
   int term_value;
   struct termios term;
+
   term_value = tcgetattr(1, &term); /* 1 (output) fd */
+
   if(term_value == -1) {
     perror("tcgetattr");
     return;
   }
-
   /* disable the ECHO flag */
   term.c_lflag &= ~ECHO;
   term_value = tcsetattr(1, TCSANOW, &term);
+
   if(term_value == -1) {
     perror("tcsetattr");
     return;
@@ -364,6 +366,7 @@ void pause_shell()
   /* restore terminal */
   term.c_lflag |= ECHO;
   term_value = tcsetattr(1, TCSANOW, &term);
+
   if(term_value == -1) {
     perror("tcsetattr2");
     return;
@@ -427,7 +430,8 @@ int main(int argc, char ** argv)
     FILE *fp = fopen(file, "r");
 
     if(fp == NULL) {
-      perror(file);
+      fprintf(stderr, "Failed to open file: %s", file);
+      perror(NULL);
       exit(EXIT_FAILURE);
     }
     is_file = 1;

@@ -29,7 +29,18 @@ const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", 
 
 volatile __sig_atomic_t running = 1;
 int background = 0; /* background execution (&) */
-char project_root[max_data]; /* project root directory */
+
+void *xmalloc(size_t size)
+{
+  void *ptr = malloc(size);
+
+  if(ptr == NULL) {
+    perror("malloc");
+    exit(EXIT_FAILURE);
+  }
+
+  return ptr;
+}
 
 void reap_children(void)
 {
@@ -282,15 +293,45 @@ void display(char **args)
  * support escaped dollar signs, so \$HOME prints $HOME literally.
  * handle combinations of options, such as -ne and -en.
  */
+char *get_project_root()
+{
+  ssize_t len;
+  size_t path_len;
+  char 
+      *exe_path, 
+      *project_path = NULL, 
+      *project_path_p;
+
+  exe_path = xmalloc(max_data * sizeof(char));
+
+  len = readlink("/proc/self/exe", exe_path, max_data - 1);
+  if(len == -1) {
+    perror("readlink");
+    goto end;
+  }
+  
+  exe_path[len] = '\0';
+  project_path_p = dirname(dirname(exe_path));
+  path_len = strlen(project_path_p) + 1;
+
+  project_path = xmalloc(path_len * sizeof(char));
+  strcpy(project_path, project_path_p);
+  
+end:
+  free(exe_path);
+  return project_path;
+}
 
 int print_help()
 {
   char manual_path[max_data];
   char *args[] = { "more", NULL, NULL };
-  snprintf(manual_path, sizeof(manual_path), "%s/%s", project_root, "readme.md");
+  char *pr = get_project_root();
+
+  snprintf(manual_path, sizeof(manual_path), "%s/%s", pr, "readme.md");
 
   args[1] = manual_path;
-
+  free(pr);
   return spawn("more", args);
 }
 
@@ -369,23 +410,6 @@ void run_cmd(char **arguments)
   }
 }
 
-int write_project_root()
-{
-  ssize_t len;
-  char exe_path[max_data];
-
-  len = readlink("/proc/self/exe", exe_path, max_data - 1);
-  if(len == -1) {
-    perror("readlink");
-    return EXIT_FAILURE;
-  }
-
-  exe_path[len] = '\0';
-  strcpy(project_root, dirname(dirname(exe_path)));
-
-  return 0;
-}
-
 int main(int argc, char ** argv)
 {
   char buf[max_buffer];
@@ -396,8 +420,6 @@ int main(int argc, char ** argv)
   int is_file = 0;
 
   FILE *input = stdin;
-
-  write_project_root();
 
   if(argc > 1) { /* reading from a file */
     char *file = argv[1];

@@ -1,2 +1,6 @@
+*.o
 assignment_details.md
 prog
+tok
+myshell
+compile_flags.txt

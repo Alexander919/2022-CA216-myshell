@@ -27,6 +27,55 @@ enum {
 enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, quit_e  };
 const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", "quit" };
 
+/* $ ~ are handled later, at parser stage as word expansion */
+/* need to recognize \ "" and '' */
+/*
+ Character	Name	                Purpose
+ \	        Backslash	            Escapes the next character (with some exceptions)
+ "	        Double quote	        Groups text into a word while allowing certain expansions
+ '	        Single quote	        Treats enclosed characters literally
+
+ hello'$USER'"$HOME"world - is a single word
+ */
+enum token_type {
+  word_e,
+  redirect_input_e,     /* < */
+  redirect_output_e,    /* > */
+  redirect_append_e,    /* >> */
+  pipe_e,               /* | */
+  logical_and_e,        /* && */
+  logical_or_e,         /* || */
+  background_e,         /* & */
+  separator_e,          /* ; */
+  end_e
+};
+
+const char *token_operator[] = {
+  NULL,
+  "<",
+  ">",
+  ">>",
+  "|",
+  "&&",
+  "||",
+  "&",
+  ";",
+  EOF
+};
+
+enum lexer_state {
+  normal_e,
+  single_quoted_e,
+  double_quoted_e
+};
+
+struct token {
+  char *value;
+  enum token_type type;
+  int position;
+  int length;
+};
+
 volatile __sig_atomic_t running = 1;
 int background = 0; /* background execution (&) */
 
@@ -40,6 +89,21 @@ void *xmalloc(size_t size)
   }
 
   return ptr;
+}
+
+struct token *tokenize(char *input_string)
+{
+
+}
+
+void parse()
+{
+
+}
+
+void execute()
+{
+
 }
 
 void reap_children(void)
@@ -257,7 +321,7 @@ void change_directory(char *path)
   } else {
     if(path == NULL) { /* no arguments */
       cwd = getcwd2();
-      fprintf(stdout, "%s\n", cwd);
+      fprintf(stdout, "%s\n", cwd); /* report current working directory */
     } else {
       fprintf(stdout, "Directory does not exist or is inaccessible.\n");
     }
@@ -332,6 +396,7 @@ int print_help()
 
   args[1] = manual_path;
   free(pr);
+
   return spawn("more", args);
 }
 
@@ -412,6 +477,19 @@ void run_cmd(char **arguments)
       external_cmd(command, arguments);
   }
 }
+
+/*
+ * Redirection and background execution.
+ * < - input redirection
+ * > - output redirection
+ * >> - output redirection(append)
+ * | - pipe
+ * & - background execution
+ * && ||
+ * ;
+ * ~
+ * $HOME $? - env variable expansion
+ */
 
 int main(int argc, char ** argv)
 {

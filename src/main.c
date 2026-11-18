@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <termios.h>
+#include "util.h"
 
 #define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
@@ -78,18 +79,6 @@ struct token {
 
 volatile __sig_atomic_t running = 1;
 int background = 0; /* background execution (&) */
-
-void *xmalloc(size_t size)
-{
-  void *ptr = malloc(size);
-
-  if(ptr == NULL) {
-    perror("malloc");
-    exit(EXIT_FAILURE);
-  }
-
-  return ptr;
-}
 
 struct token *tokenize(char *input_string)
 {

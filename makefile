@@ -3,16 +3,15 @@ CFLAGS 			= -std=c89 -Wall -Wextra -Wpedantic -g
 CPPFLAGS 		= -Iinclude
 
 TARGET 			= build/myshell
-TOK_TARGET 	= build/tok
-
-TOK_SRCS 		= src/tokenizer.c src/util.c
-# TOK_OBJS 		= $(TOK_SRCS:.c=.o)
-TOK_OBJS 		= $(patsubst src/%.c,build/%.o,$(TOK_SRCS))
-
 SRCS 				= src/main.c src/util.c
 # SRCS 				= $(wildcard src/*.c)
 # OBJS 				= $(SRCS:.c=.o)
 OBJS 				= $(patsubst src/%.c,build/%.o,$(SRCS))
+
+TOK_TARGET 	= build/tok
+TOK_SRCS 		= src/tokenizer.c src/util.c
+# TOK_OBJS 		= $(TOK_SRCS:.c=.o)
+TOK_OBJS 		= $(patsubst src/%.c,build/%.o,$(TOK_SRCS))
 
 LDFLAGS 		=
 LDLIBS 			=
@@ -26,7 +25,7 @@ run: $(TARGET)
 
 tok: $(TOK_TARGET)
 
-run_tok: $(TOK_TARGET)
+runtok: $(TOK_TARGET)
 	./$(TOK_TARGET)
 
 $(TARGET): $(OBJS)
@@ -41,7 +40,7 @@ build/%.o: src/%.c | build
 build/util.o: include/util.h
 
 build:
-	mkdir -p build
+	mkdir -p $@
 
 clean:
 	rm -f $(OBJS) $(TARGET)

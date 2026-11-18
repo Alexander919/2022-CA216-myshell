@@ -17,13 +17,6 @@
 
 #define SEPARATORS " \t\n" /* token separators */
 extern char **environ;
-/* compile time constants */
-enum {
-  icmd_len = 8,       /* length of interal commands array */
-  max_buffer = 1024,  /* max line buffer */
-  max_args = 64,      /* max number of args */
-  max_data = 512
-};
 /* internal commands enum */
 enum icmd             { cd_e, clr_e, dir_e, environ_e, echo_e, help_e, pause_e, quit_e  };
 const char *icmd[] =  { "cd", "clr", "dir", "environ", "echo", "help", "pause", "quit" };
@@ -355,7 +348,7 @@ char *get_project_root()
       *project_path = NULL,
       *project_path_p;
 
-  exe_path = xmalloc(max_data * sizeof(char));
+  exe_path = xmalloc(max_data, sizeof(char));
 
   len = readlink("/proc/self/exe", exe_path, max_data - 1);
   if(len == -1) {
@@ -367,7 +360,7 @@ char *get_project_root()
   project_path_p = dirname(dirname(exe_path));
   path_len = strlen(project_path_p) + 1;
 
-  project_path = xmalloc(path_len * sizeof(char));
+  project_path = xmalloc(path_len, sizeof(char));
   strcpy(project_path, project_path_p);
 
 end:

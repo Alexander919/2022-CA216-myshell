@@ -1,5 +1,6 @@
-#include <stdio.h>
 #include "util.h"
+#include <stdio.h>
+#include <stdlib.h>
 /* $ ~ are handled later, at parser stage as word expansion */
 /* need to recognize \ "" and '' */
 /*
@@ -33,7 +34,7 @@ const char *token_operator[] = {
   "||",
   "&",
   ";",
-  NULL
+  "\0"
 };
 
 enum lexer_state {
@@ -51,25 +52,40 @@ struct token {
 
 struct token *tokenize(const char *input_string)
 {
-  int *test = xmalloc(10 * sizeof(int));
-  *test = 5;
-  printf("%s %d\n", input_string, *test);
+  int ct, i;
+  char *current_token = xmalloc(max_data, sizeof(char));
+
+  for(ct = 0, i = 0; input_string[i] && input_string[i] != '\n'; ct++, i++) {
+    while(ct == 0 && (input_string[i] == ' ' || input_string[i] == '\t')) {
+      i++;
+    }
+    current_token[ct] = input_string[i];
+    if(input_string[i] == ' ' || input_string[i] == '\t') {
+      current_token[ct] = '\0';
+      ct = -1;
+      printf("%s\n", current_token);
+    }
+  }
+  current_token[ct] = '\0';
+  printf("%s\n", current_token);
+
+  free(current_token);
+
   return NULL;
 }
 
-void parse()
+void parse(void)
 {
 
 }
 
-void execute()
+void execute(void)
 {
 
 }
 
 int main(void)
 {
-  printf("Hello, World!\n");
-  tokenize("echo \"hello world\"");
+  tokenize("   echo    xhello");
   return 0;
 }

@@ -1,6 +1,7 @@
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 /* $ ~ are handled later, at parser stage as word expansion */
 /* need to recognize \ "" and '' */
 /*
@@ -50,24 +51,33 @@ struct token {
   int length;
 };
 
+
+
 struct token *tokenize(const char *input_string)
 {
-  int ct, i;
+  int i;
+  int ct_len = 0;
+  int start = 0;
+
   char *current_token = xmalloc(max_data, sizeof(char));
 
-  for(ct = 0, i = 0; input_string[i] && input_string[i] != '\n'; ct++, i++) {
-    while(ct == 0 && (input_string[i] == ' ' || input_string[i] == '\t')) {
-      i++;
-    }
-    current_token[ct] = input_string[i];
-    if(input_string[i] == ' ' || input_string[i] == '\t') {
-      current_token[ct] = '\0';
-      ct = -1;
-      printf("%s\n", current_token);
+  for(i = 0; ; i++) {
+    char ch = input_string[i];
+    int end = is_end(ch);
+
+    if(end || is_whitespace(ch)) {
+      if(ct_len != 0) {
+        memcpy(current_token, input_string + start, ct_len);
+        current_token[i] = '\0';
+        ct_len = 0;
+        printf("[%s]\n", current_token);
+      }
+      if(end) break;
+    } else {
+      if(ct_len == 0) start = i;
+      ct_len++;
     }
   }
-  current_token[ct] = '\0';
-  printf("%s\n", current_token);
 
   free(current_token);
 
@@ -86,6 +96,6 @@ void execute(void)
 
 int main(void)
 {
-  tokenize("   echo    xhello");
+  tokenize("   echo    xhello   ");
   return 0;
 }

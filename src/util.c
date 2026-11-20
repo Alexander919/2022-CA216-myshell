@@ -12,3 +12,13 @@ void *xmalloc(size_t nmemb, size_t size)
   }
   return ptr;
 }
+
+int is_whitespace(char ch)
+{
+  return ch == ' ' || ch == '\t';
+}
+
+int is_end(char ch)
+{
+  return ch == '\0' || ch == '\n';
+}

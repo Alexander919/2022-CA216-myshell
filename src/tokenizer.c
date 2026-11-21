@@ -12,19 +12,21 @@
 
  hello'$USER'"$HOME"world - is a single word
  */
+/* token type enum, starts with 0 */
 enum token_type {
-  word_e,
-  redirect_input_e,     /* < */
-  redirect_output_e,    /* > */
-  redirect_append_e,    /* >> */
-  pipe_e,               /* | */
-  logical_and_e,        /* && */
-  logical_or_e,         /* || */
-  background_e,         /* & */
-  separator_e,          /* ; */
+  word_e              = 0,
+  redirect_input_e,        /* < */
+  redirect_output_e,       /* > */
+  redirect_append_e,       /* >> */
+  pipe_e,                  /* | */
+  logical_and_e,           /* && */
+  logical_or_e,            /* || */
+  background_e,            /* & */
+  separator_e,             /* ; */
   end_e
 };
 
+#if 0
 const char *token_operator[] = {
   NULL,
   "<",
@@ -36,6 +38,25 @@ const char *token_operator[] = {
   "&",
   ";",
   "\0"
+};
+#endif
+
+/* struct to match operators */
+static const struct
+{
+  const char *oper;       /* operator */
+  const int length;       /* operator length */
+  enum token_type type;   /* token type of the corresponding operator */
+}
+operators[] = {
+  { ">>", 2, redirect_append_e  },
+  { "&&", 2, logical_and_e      },
+  { "||", 2, logical_or_e       },
+  { "<" , 1, redirect_input_e   },
+  { ">" , 1, redirect_output_e  },
+  { "|" , 1, pipe_e             },
+  { "&" , 1, background_e       },
+  { ";" , 1, separator_e        }
 };
 
 enum lexer_state {
@@ -51,7 +72,17 @@ struct token {
   int length;
 };
 
-
+static enum token_type match_operator(const char *input)
+{
+  int k, cmp;
+  k = 0;
+  cmp = strncmp(input, operators[k].oper, operators[k].length);
+  if(cmp == 0) {
+    printf("%s - %d\n", operators[k].oper, operators[k].type);
+    return operators[k].type;
+  }
+  return word_e; /* no match */
+}
 
 struct token *tokenize(const char *input_string)
 {
@@ -73,7 +104,12 @@ struct token *tokenize(const char *input_string)
         printf("[%s]\n", current_token);
       }
       if(end) break;
-    } else {
+    }
+    else {
+      enum token_type type = match_operator(input_string);
+      if(type) { /* word_e = 0, so type must be > 0 */
+        /* operator is found, act accordingly */
+      }
       if(ct_len == 0) start = i;
       ct_len++;
     }

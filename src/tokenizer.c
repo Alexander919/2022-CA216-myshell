@@ -15,14 +15,14 @@
 /* token type enum, starts with 0 */
 enum token_type {
   word_e              = 0,
-  redirect_input_e,        /* < */
-  redirect_output_e,       /* > */
-  redirect_append_e,       /* >> */
-  pipe_e,                  /* | */
-  logical_and_e,           /* && */
-  logical_or_e,            /* || */
-  background_e,            /* & */
-  separator_e,             /* ; */
+  redirect_input_e    = 1, /* < */
+  redirect_output_e   = 2, /* > */
+  redirect_append_e   = 3, /* >> */
+  pipe_e              = 4, /* | */
+  logical_and_e       = 5, /* && */
+  logical_or_e        = 6, /* || */
+  background_e        = 7, /* & */
+  separator_e         = 8, /* ; */
   end_e
 };
 
@@ -74,12 +74,11 @@ struct token {
 
 static enum token_type match_operator(const char *input)
 {
-  int k, cmp;
-  k = 0;
-  cmp = strncmp(input, operators[k].oper, operators[k].length);
-  if(cmp == 0) {
-    printf("%s - %d\n", operators[k].oper, operators[k].type);
-    return operators[k].type;
+  size_t k;
+  for(k = 0; k < sizeof(operators) / sizeof(operators[0]); k++) {
+    if(strncmp(input, operators[k].oper, operators[k].length) == 0) {
+      return operators[k].type; /* operator found */
+    }
   }
   return word_e; /* no match */
 }
@@ -90,7 +89,8 @@ struct token *tokenize(const char *input_string)
   int ct_len = 0;
   int start = 0;
 
-  char *current_token = xmalloc(max_data, sizeof(char));
+  char *current_token_value = xmalloc(max_data, sizeof(char));
+  struct token *token = xmalloc(1, sizeof(struct token));
 
   for(i = 0; ; i++) {
     char ch = input_string[i];
@@ -98,10 +98,10 @@ struct token *tokenize(const char *input_string)
 
     if(end || is_whitespace(ch)) {
       if(ct_len != 0) {
-        memcpy(current_token, input_string + start, ct_len);
-        current_token[i] = '\0';
+        memcpy(current_token_value, input_string + start, ct_len);
+        current_token_value[i] = '\0';
         ct_len = 0;
-        printf("[%s]\n", current_token);
+        printf("[%s]\n", current_token_value);
       }
       if(end) break;
     }
@@ -115,7 +115,7 @@ struct token *tokenize(const char *input_string)
     }
   }
 
-  free(current_token);
+  free(current_token_value);
 
   return NULL;
 }
@@ -132,6 +132,11 @@ void execute(void)
 
 int main(void)
 {
+#if 0
   tokenize("   echo    xhello   ");
+  char *input = "echo hello > test.txt";
+  enum token_type tt = match_operator("> test.txt");
+  printf("%d\n", tt);
+#endif
   return 0;
 }

@@ -12,6 +12,7 @@ enum {
 };
 
 void *xmalloc(size_t nmemb, size_t size);
+void *xrealloc(void *ptr, size_t nmemb, size_t size);
 int is_whitespace(char ch);
 int is_end(char ch);
 

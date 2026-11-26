@@ -15,7 +15,7 @@ void *xmalloc(size_t nmemb, size_t size);
 void *xrealloc(void *ptr, size_t nmemb, size_t size);
 int is_whitespace(char ch);
 int is_end(char ch);
-
+char *strncpy2(char *dest, const char *src, size_t n);
 
 
 

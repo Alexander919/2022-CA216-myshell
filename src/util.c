@@ -44,3 +44,11 @@ int is_end(char ch)
 {
   return ch == '\0' || ch == '\n';
 }
+
+char *strncpy2(char *dest, const char *src, size_t n)
+{
+    strncpy(dest, src, n);
+    dest[n] = '\0';
+
+    return dest;
+}

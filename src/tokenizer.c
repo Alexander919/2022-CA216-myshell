@@ -1,6 +1,6 @@
 #include "util.h"
+#include "darray.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 /* $ ~ are handled later, at parser stage as word expansion */
 /* need to recognize \ "" and '' */
@@ -25,21 +25,6 @@ enum token_type {
   separator_e         = 8, /* ; */
   end_e
 };
-
-#if 0
-const char *token_operator[] = {
-  NULL,
-  "<",
-  ">",
-  ">>",
-  "|",
-  "&&",
-  "||",
-  "&",
-  ";",
-  "\0"
-};
-#endif
 
 /* struct to match operators */
 static const struct
@@ -72,6 +57,8 @@ struct token {
   int length;
 };
 
+typedef struct token Token ;
+
 static enum token_type match_operator(const char *input)
 {
   size_t k;
@@ -83,7 +70,7 @@ static enum token_type match_operator(const char *input)
   return word_e; /* no match */
 }
 
-struct token *tokenize(const char *input_string)
+Darray *tokenize(const char *input_string)
 {
   int i;
   int ct_len = 0;
@@ -91,6 +78,7 @@ struct token *tokenize(const char *input_string)
 
   char *current_token_value = xmalloc(max_data, sizeof(char));
   struct token *token = xmalloc(1, sizeof(struct token));
+  Darray *tokens = darray_create();
 
   for(i = 0; ; i++) {
     char ch = input_string[i];
@@ -98,26 +86,30 @@ struct token *tokenize(const char *input_string)
 
     if(end || is_whitespace(ch)) {
       if(ct_len != 0) {
-        memcpy(current_token_value, input_string + start, ct_len);
-        current_token_value[i] = '\0';
-        ct_len = 0;
+        enum token_type type;
+        strncpy2(current_token_value, input_string + start, ct_len);
+
+        type = match_operator(current_token_value);
+
+        token->value = current_token_value;
+        token->type = type;
+        token->length = ct_len;
+        token->position = i;
+
+        darray_push(tokens, token);
+
         printf("[%s]\n", current_token_value);
+        ct_len = 0;
       }
       if(end) break;
     }
     else {
-      enum token_type type = match_operator(input_string);
-      if(type) { /* word_e = 0, so type must be > 0 */
-        /* operator is found, act accordingly */
-      }
       if(ct_len == 0) start = i;
       ct_len++;
     }
   }
 
-  free(current_token_value);
-
-  return NULL;
+  return tokens;
 }
 
 void parse(void)
@@ -132,8 +124,9 @@ void execute(void)
 
 int main(void)
 {
-#if 0
   tokenize("   echo    xhello   ");
+  tokenize("echo || hello > test.txt &");
+#if 0
   char *input = "echo hello > test.txt";
   enum token_type tt = match_operator("> test.txt");
   printf("%d\n", tt);

@@ -20,6 +20,6 @@ Darray *darray_create(void);
 size_t darray_count(const Darray *darr);
 int darray_get(const Darray *darr, size_t i, void **out);
 int darray_pop(Darray *darr, void **out);
-void darray_destroy(Darray *darr);
-
+void darray_destroy(Darray *darr, void (*clean)(void *));
+void darray_print(Darray *darr, void (*cb)(void *elem));
 #endif

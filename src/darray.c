@@ -52,16 +52,24 @@ int darray_pop(Darray *darr, void **out)
   return 1;
 }
 
-void darray_destroy(Darray *darr)
+void darray_destroy(Darray *darr, void (*clean)(void *))
 {
   if(darr != NULL) {
     if(darr->value != NULL) {
       size_t i;
       for(i = 0; i < darr->index; i++) {
-        free(darr->value[i]);
+        clean(darr->value[i]);
       }
       free(darr->value);
     }
     free(darr);
+  }
+}
+
+void darray_print(Darray *darr, void (*cb)(void *elem))
+{
+  size_t i;
+  for(i = 0; i < darr->index; i++) {
+    cb(darr->value[i]);
   }
 }

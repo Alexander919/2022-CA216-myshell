@@ -1,6 +1,7 @@
 #include "util.h"
 #include "darray.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 /* $ ~ are handled later, at parser stage as word expansion */
 /* need to recognize \ "" and '' */
@@ -51,13 +52,20 @@ enum lexer_state {
 };
 
 struct token {
-  char *value;
+  char *name;
   enum token_type type;
   int position;
   int length;
 };
 
 typedef struct token Token ;
+
+/* darray_print callback */
+void token_printer(void *elem)
+{
+  Token *token = elem;
+  printf("[%s]\n", token->name);
+}
 
 static enum token_type match_operator(const char *input)
 {
@@ -76,8 +84,6 @@ Darray *tokenize(const char *input_string)
   int ct_len = 0;
   int start = 0;
 
-  char *current_token_value = xmalloc(max_data, sizeof(char));
-  struct token *token = xmalloc(1, sizeof(struct token));
   Darray *tokens = darray_create();
 
   for(i = 0; ; i++) {
@@ -87,18 +93,20 @@ Darray *tokenize(const char *input_string)
     if(end || is_whitespace(ch)) {
       if(ct_len != 0) {
         enum token_type type;
+        char *current_token_value = xmalloc(max_data, sizeof(char));
+        Token *token = xmalloc(1, sizeof(struct token));
+
         strncpy2(current_token_value, input_string + start, ct_len);
 
         type = match_operator(current_token_value);
 
-        token->value = current_token_value;
+        token->name = current_token_value;
         token->type = type;
         token->length = ct_len;
         token->position = i;
 
         darray_push(tokens, token);
 
-        printf("[%s]\n", current_token_value);
         ct_len = 0;
       }
       if(end) break;
@@ -121,15 +129,24 @@ void execute(void)
 {
 
 }
+/* callback for darray_destroy */
+void token_cleaner(void *data)
+{
+  Token *token = data;
+  free(token->name);
+  free(token);
+}
 
 int main(void)
 {
-  tokenize("   echo    xhello   ");
-  tokenize("echo || hello > test.txt &");
-#if 0
-  char *input = "echo hello > test.txt";
-  enum token_type tt = match_operator("> test.txt");
-  printf("%d\n", tt);
-#endif
+  Darray *arr1 = tokenize("   echo    xhello   ");
+  Darray *arr2 = tokenize("echo || hello > test.txt &");
+
+  darray_print(arr1, token_printer);
+  darray_print(arr2, token_printer);
+
+  darray_destroy(arr1, token_cleaner);
+  darray_destroy(arr2, token_cleaner);
+
   return 0;
 }
